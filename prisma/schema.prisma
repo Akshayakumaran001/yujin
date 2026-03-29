@@ -1,0 +1,87 @@
+// Prisma schema for WhatsApp Automation System
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           String     @id @default(uuid())
+  name         String
+  email        String     @unique
+  passwordHash String
+  role         String     @default("CORE_MEMBER") // ADMIN | CORE_MEMBER
+  createdAt    DateTime   @default(now())
+
+  messages  Message[]
+  auditLogs AuditLog[]
+}
+
+model Contact {
+  id        String   @id @default(uuid())
+  name      String
+  phone     String   @unique
+  tags      String   @default("[]") // JSON array stored as string
+  optOut    Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  messageLogs MessageLog[]
+}
+
+model Message {
+  id          String   @id @default(uuid())
+  content     String
+  templateId  String?
+  createdById String
+  status      String   @default("pending") // pending | processing | completed
+  createdAt   DateTime @default(now())
+
+  createdBy   User         @relation(fields: [createdById], references: [id])
+  template    Template?    @relation(fields: [templateId], references: [id])
+  messageLogs MessageLog[]
+}
+
+model MessageLog {
+  id         String    @id @default(uuid())
+  messageId  String
+  contactId  String?
+  phone      String
+  status     String    @default("pending") // pending | sent | failed
+  attempt    Int       @default(0)
+  error      String?
+  sentAt     DateTime?
+  createdAt  DateTime  @default(now())
+
+  message Message  @relation(fields: [messageId], references: [id])
+  contact Contact? @relation(fields: [contactId], references: [id])
+}
+
+model Template {
+  id          String   @id @default(uuid())
+  name        String
+  content     String
+  createdById String
+  createdAt   DateTime @default(now())
+
+  messages Message[]
+}
+
+model AuditLog {
+  id        String   @id @default(uuid())
+  userId    String
+  action    String
+  metadata  String   @default("{}") // JSON stored as string
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id])
+}
+
+model OptOut {
+  id        String   @id @default(uuid())
+  phone     String   @unique
+  reason    String?
+  createdAt DateTime @default(now())
+}
